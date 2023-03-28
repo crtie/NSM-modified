@@ -67,7 +67,7 @@ def main(cfg):
         num_workers=cfg.exp.num_workers,
         # persistent_workers=True,
         pin_memory=True,
-        shuffle=False,
+        shuffle=True,
         drop_last=False
     )
 

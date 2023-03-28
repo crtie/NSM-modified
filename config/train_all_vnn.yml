@@ -4,7 +4,7 @@ exp:
     num_workers: 8
     batch_size: 32
     num_epochs: 10000
-    log_dir: 'log'
+    log_dir: 'log/vnn'
 
 model:
     encoder: 'vn_dgcnn'
