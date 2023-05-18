@@ -268,7 +268,7 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
         # return {'loss': total_loss, 'log': tensorboard_logs}
 
     def validation_step(self, batch_data, batch_idx):
-        total_loss, point_loss, rot_loss, trans_loss = self.forward_pass(batch_data, mode='train')
+        total_loss, point_loss, rot_loss, trans_loss = self.forward_pass(batch_data, mode='val')
         return total_loss
         # return {'loss': total_loss, 'log': tensorboard_logs}
 
@@ -325,7 +325,7 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
         return
 
     def forward_pass(self, batch_data, mode):
- 
+
         pred_data = self.forward(batch_data['src_pc'].float(), batch_data['tgt_pc'].float())
         self.check_network_property(batch_data, pred_data)
         point_loss = 0.0
@@ -337,6 +337,7 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
         #     self.calculate_metrics(batch_data, pred_data, mode)
         # Total loss
         total_loss = point_loss + rot_loss + 10 * trans_loss
+        print(mode)
         self.log("{}/total loss".format(mode), total_loss.item(), on_step=True, on_epoch=True, prog_bar=True,
                  logger=True, sync_dist=True)
         # self.log("{}/point loss".format(mode), point_loss.item(), on_step=True, on_epoch=False, prog_bar=True,

@@ -111,7 +111,8 @@ def main(cfg):
         log_every_n_steps=1,
         default_root_dir=checkpoint_dir,
         # distributed_backend="ddp"
-        logger=logger
+        logger=logger,
+        # val_check_interval = 1.0,
     )
 
     trainer.fit(model, train_loader, val_loader)
