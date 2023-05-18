@@ -14,9 +14,8 @@ from ipdb import set_trace
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(BASE_DIR, '../shape_assembly'))
 from config import get_cfg_defaults
-from datasets.baseline.dataloader_wrh import ShapeAssemblyDataset
+from datasets.baseline.dataloader import ShapeAssemblyDataset
 from models.baseline.network_vnn import ShapeAssemblyNet_vnn
-from models.baseline.network_wrh import ShapeAssemblyNet_WRH
 
 def main(cfg):
     # 把整个yaml文件看成一个cfg
@@ -36,8 +35,7 @@ def main(cfg):
         num_points=cfg.data.num_pc_points
     )
     train_data.load_data()
-    print(train_data[0]['src_rot'])
-    print(train_data[1]['src_rot'])
+
     print('Len of Train Data: ', len(train_data))
     print('Distribution of Train Data\n', str(train_data))
     train_loader = DataLoader(
@@ -53,7 +51,8 @@ def main(cfg):
     # Initialize val dataloader
     val_data = ShapeAssemblyDataset(
         data_root_dir=cfg.data.root_dir,
-        data_csv_file=cfg.data.val_csv_file,
+        # data_csv_file=cfg.data.val_csv_file,
+        data_csv_file = cfg.data.train_csv_file,
         data_features=data_features,
         num_points=cfg.data.num_pc_points
     )

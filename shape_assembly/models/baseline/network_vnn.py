@@ -39,7 +39,6 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
         super().__init__()
         self.cfg = cfg
         self.encoder = self.init_encoder()
-        # self.corr_module = self.init_corr_module()
         self.pose_predictor_rot = self.init_pose_predictor_rot()
         self.pose_predictor_trans = self.init_pose_predictor_trans()
         self.data_features = data_features
@@ -269,7 +268,7 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
         # return {'loss': total_loss, 'log': tensorboard_logs}
 
     def validation_step(self, batch_data, batch_idx):
-        total_loss, point_loss, rot_loss, trans_loss = self.forward_pass(batch_data, mode='val')
+        total_loss, point_loss, rot_loss, trans_loss = self.forward_pass(batch_data, mode='train')
         return total_loss
         # return {'loss': total_loss, 'log': tensorboard_logs}
 
@@ -337,7 +336,7 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
         # if mode == 'val':
         #     self.calculate_metrics(batch_data, pred_data, mode)
         # Total loss
-        total_loss = point_loss + rot_loss + trans_loss
+        total_loss = point_loss + rot_loss + 10 * trans_loss
         self.log("{}/total loss".format(mode), total_loss.item(), on_step=True, on_epoch=True, prog_bar=True,
                  logger=True, sync_dist=True)
         # self.log("{}/point loss".format(mode), point_loss.item(), on_step=True, on_epoch=False, prog_bar=True,
