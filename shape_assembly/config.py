@@ -28,6 +28,7 @@ _C.model.pc_feat_dim = 512 # 这里调feature的dimision
 _C.model.transformer_feat_dim = 1024
 _C.model.num_heads   = 4
 _C.model.num_blocks  = 1
+_C.model.ifrecon = 0
 
 # Data related
 _C.data = CN()

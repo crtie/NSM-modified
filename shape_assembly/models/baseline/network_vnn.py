@@ -18,11 +18,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(BASE_DIR, '../../'))
 from models.encoder.pointnet import PointNet
 from models.encoder.dgcnn import DGCNN
+from models.decoder.MLPDecoder import MLPDecoder
 from models.encoder.vn_dgcnn import VN_DGCNN, VN_DGCNN_corr, VN_DGCNN_New
 from models.baseline.regressor_wrh import Regressor_WRH, Regressor_6d, VN_Regressor_6d
 import utils
 from pdb import set_trace
-
+from ..ChamferDistancePytorch.chamfer3D import dist_chamfer_3D
 
 def bgs(d6s):
     bsz = d6s.shape[0]
@@ -41,6 +42,8 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
         self.encoder = self.init_encoder()
         self.pose_predictor_rot = self.init_pose_predictor_rot()
         self.pose_predictor_trans = self.init_pose_predictor_trans()
+        if self.cfg.model.ifrecon == 1:
+            self.decoder = self.init_decoder()
         self.data_features = data_features
         self.iter_counts = 0
         self.close_eps = 0.1
@@ -76,6 +79,12 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
         elif self.cfg.model.pose_predictor_trans == 'vn':
             pose_predictor_trans = VN_inv_Regressor(pc_feat_dim=pc_feat_dim/3, out_dim=3)
         return pose_predictor_trans
+
+    def init_decoder(self):
+        pc_feat_dim = self.cfg.model.pc_feat_dim
+        decoder = MLPDecoder(feat_dim=pc_feat_dim, num_points=self.cfg.data.num_pc_points)
+        return decoder
+
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
@@ -129,6 +138,10 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
                 self.check_equiv(rot, R, rot_R, 'rot')
         return
 
+    def _recon_pts(self, Ga, Gb):
+        global_inv_feat = torch.sum(torch.cat([Ga, Gb], dim=1), dim=1)
+        recon_pts = self.decoder(global_inv_feat)
+        return recon_pts
 
     def forward(self, src_pc, tgt_pc):
         batch_size = src_pc.shape[0]
@@ -147,8 +160,10 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
             Fb, Gb = self.encoder(tgt_pc)
             # set_trace()
             if self.cfg.model.corr_module == 'yes':
-                src_feat = torch.bmm(Gb, Fa)
-                tgt_feat = torch.bmm(Ga, Fb)
+                # src_feat = torch.bmm(Gb, Fa)
+                # tgt_feat = torch.bmm(Ga, Fb)
+                src_feat = Fa * Gb[:, :, :3]
+                tgt_feat = Fb * Ga[:, :, :3]
             else:
                 src_feat = Fa
                 tgt_feat = Fb
@@ -165,6 +180,9 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
         else:
             src_trans = self.pose_predictor_trans(src_feat)
             tgt_trans = self.pose_predictor_trans(tgt_feat)
+        
+        if self.cfg.model.ifrecon == 1:
+            recon_pts = self._recon_pts(Ga, Gb)
         # 最后的返回值
         pred_dict = {
             'src_rot': src_rot,
@@ -175,6 +193,8 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
         if self.cfg.model.encoder == 'vn_dgcnn':
             pred_dict['Fa'] = Fa
             pred_dict['Ga'] = Ga
+        if self.cfg.model.ifrecon == 1:
+            pred_dict['recon_pts'] = recon_pts
         return pred_dict
 
     def compute_point_loss(self, batch_data, pred_data):
@@ -247,6 +267,35 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
         # print(rot_loss)
         return rot_loss
 
+    def compute_recon_loss(self, batch_data, pred_data):
+
+        recon_pts = pred_data['recon_pts'] # batch x 1024 x 3
+
+        src_pc = batch_data['src_pc'].float()  # batch x 3 x 1024
+        tgt_pc = batch_data['tgt_pc'].float()  # batch x 3 x 1024
+        src_quat_gt = batch_data['src_rot'].float()
+        tgt_quat_gt = batch_data['tgt_rot'].float()
+
+        src_Rs = utils.bgs(src_quat_gt.reshape(-1, 2, 3).permute(0, 2, 1)) # batch x 3 x 3
+        tgt_Rs = utils.bgs(tgt_quat_gt.reshape(-1, 2, 3).permute(0, 2, 1)) # batch x 3 x 3
+
+        src_trans_gt = batch_data['src_trans'].float()  # batch x 3 x 1
+        tgt_trans_gt = batch_data['tgt_trans'].float()  # batch x 3 x 1
+        with torch.no_grad():
+            transformed_src_pc_gt = src_Rs @ src_pc + src_trans_gt  # batch x 3 x 1024
+            transformed_tgt_pc_gt = tgt_Rs @ tgt_pc + tgt_trans_gt  # batch x 3 x 1024
+        gt_pts = torch.cat([transformed_src_pc_gt, transformed_tgt_pc_gt], dim=2).permute(0, 2, 1) # batch x 2048 x 3
+        # set_trace()
+        self.chamLoss = dist_chamfer_3D.chamfer_3DDist()
+        dist1, dist2, idx1, idx2 = self.chamLoss(gt_pts, recon_pts)
+        recon_loss = torch.mean(dist1) + torch.mean(dist2)
+        # torch.save(gt_pts[0],"./gt_pts.pt")
+        # torch.save(recon_pts[0],"./recon_pts.pt")
+        # torch.save(src_pc[0].permute(1,0),"./src_pc.pt")
+        # torch.save(tgt_pc[0].permute(1,0),"./tgt_pc.pt")
+        # set_trace()
+        return recon_loss
+
     def recover_R_from_6d(self, R_6d):
         # R_6d is batch * 6
         R = utils.bgs(R_6d.reshape(-1, 2, 3).permute(0, 2, 1))
@@ -277,18 +326,6 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
         return total_loss
         # return {'loss': total_loss, 'log': tensorboard_logs}
     
-    def recon_pts(self, batch_data, pred_data):
-        pts_src = batch_data['src_pc']
-        pts_tgt = batch_data['tgt_pc']
-        gt_R_src = self.recover_R_from_6d(batch_data['src_rot'])
-        gt_R_tgt = self.recover_R_from_6d(batch_data['tgt_rot'])
-        gt_t_src = batch_data['src_trans'].float().squeeze()
-        gt_t_tgt = batch_data['tgt_trans'].float().squeeze()
-
-        pred_R_src = self.recover_R_from_6d(pred_data['src_rot'])
-        pred_R_tgt = self.recover_R_from_6d(pred_data['tgt_rot'])
-        pred_t_src = pred_data['src_trans']
-        pred_t_tgt = pred_data['tgt_trans']
         
 
     def calculate_metrics(self, batch_data, pred_data, mode):
@@ -309,19 +346,19 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
         RMSE_T = (RMSE_T_src + RMSE_T_tgt) / 2.0
 
 
-        gt_transformed_pts_src = pts_src.permute(0, 2, 1) @ gt_R_src + gt_t_src
-        gt_transformed_pts_tgt = pts_tgt.permute(0, 2, 1) @ gt_R_tgt + gt_t_tgt
-        pred_transformed_pts_src = pts_src.permute(0, 2, 1) @ pred_R_src + pred_t_src
-        pred_transformed_pts_tgt = pts_tgt.permute(0, 2, 1) @ pred_R_tgt + pred_t_tgt
-        point_loss = (self.L2(gt_transformed_pts_src, pred_transformed_pts_src) + self.L2(gt_transformed_pts_tgt, pred_transformed_pts_tgt)) / 2.0
+        # gt_transformed_pts_src = pts_src.permute(0, 2, 1) @ gt_R_src + gt_t_src
+        # gt_transformed_pts_tgt = pts_tgt.permute(0, 2, 1) @ gt_R_tgt + gt_t_tgt
+        # pred_transformed_pts_src = pts_src.permute(0, 2, 1) @ pred_R_src + pred_t_src
+        # pred_transformed_pts_tgt = pts_tgt.permute(0, 2, 1) @ pred_R_tgt + pred_t_tgt
+        # point_loss = (self.L2(gt_transformed_pts_src, pred_transformed_pts_src) + self.L2(gt_transformed_pts_tgt, pred_transformed_pts_tgt)) / 2.0
         
         
         self.log("{}/GD".format(mode), GD.item(), on_step=True, on_epoch=True, prog_bar=True,
                 logger=True, sync_dist=True)
         self.log("{}/RMSE_T".format(mode), RMSE_T.item(), on_step=True, on_epoch=True, prog_bar=True,
                 logger=True, sync_dist=True)
-        self.log("{}/point_loss".format(mode), point_loss.item(), on_step=True, on_epoch=True, prog_bar=True,
-                 logger=True, sync_dist=True)
+        # self.log("{}/point_loss".format(mode), point_loss.item(), on_step=True, on_epoch=True, prog_bar=True,
+        #          logger=True, sync_dist=True)
         return
 
     def forward_pass(self, batch_data, mode):
@@ -333,11 +370,15 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
         # Pose loss
         rot_loss = self.compute_rot_loss(batch_data, pred_data)
         trans_loss = self.compute_trans_loss(batch_data, pred_data)
-        # if mode == 'val':
-        #     self.calculate_metrics(batch_data, pred_data, mode)
+        if self.cfg.model.ifrecon == 1:
+            recon_loss = self.compute_recon_loss(batch_data, pred_data)
+
+        if mode == 'val':
+            self.calculate_metrics(batch_data, pred_data, mode)
         # Total loss
-        total_loss = point_loss + rot_loss + 10 * trans_loss
-        print(mode)
+        total_loss = point_loss + rot_loss + 10 * trans_loss + recon_loss
+        # total_loss = 100 * recon_loss + 0.001 * rot_loss + 0.001 * trans_loss
+        # print(mode)
         self.log("{}/total loss".format(mode), total_loss.item(), on_step=True, on_epoch=True, prog_bar=True,
                  logger=True, sync_dist=True)
         # self.log("{}/point loss".format(mode), point_loss.item(), on_step=True, on_epoch=False, prog_bar=True,
@@ -345,6 +386,8 @@ class ShapeAssemblyNet_vnn(pl.LightningModule):
         self.log("{}/rot loss".format(mode), rot_loss.item(), on_step=True, on_epoch=False, prog_bar=True,
                  logger=True, sync_dist=True)
         self.log("{}/trans loss".format(mode), trans_loss.item(), on_step=True, on_epoch=False, prog_bar=True,
+                 logger=True, sync_dist=True)
+        self.log("{}/recon loss".format(mode), recon_loss.item(), on_step=True, on_epoch=False, prog_bar=True,
                  logger=True, sync_dist=True)
         return total_loss, point_loss, rot_loss, trans_loss
 
