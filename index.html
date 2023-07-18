@@ -37,8 +37,17 @@
   Abstract
 </div>
 <p class = "abstractText">
-    Understanding and manipulating deformable objects (e.g., ropes and fabrics) is an essential yet challenging task with broad applications. Difficulties come from complex states and dynamics, diverse configurations and high-dimensional action space of deformable objects. Besides, the manipulation tasks usually require multiple steps to accomplish, and greedy policies may easily lead to local optimal states. Existing studies usually tackle this problem using reinforcement learning or imitating expert demonstrations, with limitations in modeling complex states or requiring hand-crafted expert policies. In this paper, we study deformable object manipulation using dense visual affordance, with generalization towards diverse states, and propose a novel kind of foresightful dense affordance, which avoids local optima by estimating states' values for long-term manipulation. We propose a framework for learning this representation, with novel designs such as multi-stage stable learning and efficient self-supervised data collection without experts. Experiments demonstrate the superiority of our proposed foresightful dense affordance.
-</p>
+  Shape assembly aims to reassemble parts (or fragments) into a complete object, which is 
+  a common task in our daily life.
+  Different from the semantic part assembly (\emph{e.g.}, assembling a chair's semantic parts like legs into a whole chair),
+  geometric part assembly (\emph{e.g.}, assembling bowl fragments into a complete bowl) is an emerging task in computer vision and robotics.
+  Instead of semantic information, this task focuses on geometric information of parts.
+  As the both geometric and pose space of fractured parts are exceptionally large, shape pose disentanglement of part representations is beneficial to geometric shape assembly.
+  In our paper, we propose to leverage SE(3) equivariance for such shape pose disentanglement.
+  Moreover, while previous works in vision and robotics only consider SE(3) equivariance for the representations of single objects,
+  we move a step forward and propose leveraging SE(3) equivariance for representations considering multi-part correlations,
+  which further boosts the performance of the multi-part assembly.
+  Experiments demonstrate the significance of SE(3) equivariance and our proposed method for geometric shape assembly.</p>
 
 <br>
 <div class="abstractTitle">
