@@ -55,7 +55,7 @@
 </div>
 <br>
 <center>
-    <iframe width="660" height="415" src="https://youtu.be/pEtIAal-xgQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+  <iframe width="560" height="315" src="https://www.youtube.com/embed/pEtIAal-xgQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
 </center>
 
 
@@ -73,13 +73,17 @@
         <b>Geometric Shape Assembly</b> aims to assemble different fractured parts into a whole shape. We propose to leverage \textbf{SE(3) Equivariance} for learning Geometric Shape Assembly, which disentangles poses and shapes of fractured parts, and performs better than networks without SE(3)-equivariant representations.  </p></td></tr></tbody></table>
 
 <div class="abstractTitle">
-    Our Proposed Multi-stage Affordance Learning Framework
+    Our Proposed Framework
 </div>
   <img class="bannerImage" src="./images/framework.png" ,="" width="600"><br>
   <table width="800" align="center"><tbody><tr><td><p class="figureTitleText">
         Figure 2.
-        Our proposed framework learns dense picking and placing affordance for deformable object manipulation (e.g., Unfolding Cloth). We collect multi-stage interaction data efficiently (Left) and learn proposed affordance stably in a multi-stage schema (Right) in the reversed task accomplishment order, from states close to the target to complex states.
-  </p></td></tr></tbody></table>
+        \caption{\textbf{Overview of our proposed framework.}
+  Taking as input the point cloud of each part $i$,
+  our framework first outputs the equivariant representation $F_i$ and invariant representation $G_i$,
+  computes the correlation between part $i$ and each part $j$ using the matrix multiplication of $F_i$ and $G_j$, and thus gets each part's equivariant representation $H_i$ with part correlations.
+  The rotation decoder and the translation decoder respectively take $H$ and decode the rotation and translation of each part.
+  Additional constraints such as adversarial training and canonical point cloud reconstruction using $G$ further improves the performance of our method.  </p></td></tr></tbody></table>
   <img class="bannerImage" src="./images/affordance.png" ,="" width="800"><br>
   <table width="800" align="center"><tbody><tr><td><p class="figureTitleText">
         Figure 3.
