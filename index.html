@@ -3,6 +3,7 @@
 <title>Leveraging SE(3) Equivariance for Learning 3D Geometric Shape Assembly</title>
 <link rel="SHORTCUT ICON" href="favicon.ico"/>
 <link href='./css/paperstyle.css' rel='stylesheet' type='text/css'>
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=AM_HTMLorMML-full"></script>
 </head>
 
 <body>
@@ -78,12 +79,12 @@
   <img class="bannerImage" src="./images/framework.png" ,="" width="600"><br>
   <table width="800" align="center"><tbody><tr><td><p class="figureTitleText">
         Figure 2.
-        \caption{\textbf{Overview of our proposed framework.}
-  Taking as input the point cloud of each part $i$,
-  our framework first outputs the equivariant representation $F_i$ and invariant representation $G_i$,
-  computes the correlation between part $i$ and each part $j$ using the matrix multiplication of $F_i$ and $G_j$, and thus gets each part's equivariant representation $H_i$ with part correlations.
-  The rotation decoder and the translation decoder respectively take $H$ and decode the rotation and translation of each part.
-  Additional constraints such as adversarial training and canonical point cloud reconstruction using $G$ further improves the performance of our method.  </p></td></tr></tbody></table>
+        <b>Overview of our proposed framework</b>
+  Taking as input the point cloud of each part `i`,
+  our framework first outputs the equivariant representation `F_i` and invariant representation `G_i`,
+  computes the correlation between part `i` and each part `j` using the matrix multiplication of `F_i` and `G_j`, and thus gets each part's equivariant representation `H_i` with part correlations.
+  The rotation decoder and the translation decoder respectively take `H` and decode the rotation and translation of each part.
+  Additional constraints such as adversarial training and canonical point cloud reconstruction using `G` further improves the performance of our method.  </p></td></tr></tbody></table>
   <img class="bannerImage" src="./images/affordance.png" ,="" width="800"><br>
   <table width="800" align="center"><tbody><tr><td><p class="figureTitleText">
         Figure 3.
